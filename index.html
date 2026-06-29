@@ -1,0 +1,2275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Call Center - Dashboard 2026</title>
+    <!-- Chart.js для графиков -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF для экспорта PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #00D9FF;
+            --secondary: #FF006E;
+            --dark: #0A0E27;
+            --darker: #050A1A;
+            --light: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --accent: #FFBE0B;
+            --success: #00FF88;
+            --neon-purple: #b537f2;
+            --neon-lime: #39ff14;
+        }
+
+        body {
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
+            color: var(--light);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(0, 217, 255, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 0, 110, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 50% 0%, rgba(181, 55, 242, 0.08) 0%, transparent 50%);
+            animation: gradientFloat 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes gradientFloat {
+            0%, 100% { transform: translate(0, 0); opacity: 1; }
+            50% { transform: translate(40px, -40px); opacity: 0.8; }
+        }
+
+        /* Glassmorphism effect */
+        @keyframes glassPulse {
+            0%, 100% { backdrop-filter: blur(10px); }
+            50% { backdrop-filter: blur(15px); }
+        }
+
+        .dashboard { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+
+        .sidebar {
+            background: rgba(15, 15, 15, 0.7);
+            backdrop-filter: blur(20px);
+            border-right: 2px solid rgba(0, 217, 255, 0.2);
+            padding: 2rem 1.8rem;
+            height: 100vh;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+            animation: sidebarGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes sidebarGlow {
+            0%, 100% { box-shadow: inset 0 0 20px rgba(0, 217, 255, 0.05); }
+            50% { box-shadow: inset 0 0 40px rgba(181, 55, 242, 0.05); }
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 2.5rem;
+            color: var(--primary);
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(181, 55, 242, 0.15));
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            border: 1.5px solid rgba(0, 217, 255, 0.3);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 217, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 217, 255, 0.2);
+            border-color: rgba(0, 217, 255, 0.5);
+        }
+
+        .nav-group { margin-bottom: 2rem; }
+
+        .nav-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: rgba(0, 217, 255, 0.6);
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            letter-spacing: 1.2px;
+        }
+
+        .nav-item {
+            padding: 0.85rem 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.4rem;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.2), transparent);
+            transition: left 0.3s ease;
+        }
+
+        .nav-item:hover {
+            background: rgba(0, 217, 255, 0.15);
+            color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .nav-item:hover::before {
+            left: 100%;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.25), rgba(181, 55, 242, 0.15));
+            color: var(--primary);
+            border-left: 3px solid var(--primary);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        .main {
+            padding: 2rem;
+            overflow-y: auto;
+            max-height: 100vh;
+            position: relative;
+        }
+
+        .section { display: none; animation: fadeIn 0.4s ease; }
+        .section.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.12), rgba(181, 55, 242, 0.08));
+            padding: 2rem;
+            border-radius: 16px;
+            border: 2px solid rgba(0, 217, 255, 0.2);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0, 217, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.5), transparent);
+            opacity: 0.5;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 217, 255, 0.2);
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.3)); }
+            50% { filter: drop-shadow(0 0 20px rgba(181, 55, 242, 0.3)); }
+        }
+
+        .header-actions { display: flex; gap: 1.5rem; }
+
+        .btn {
+            padding: 0.9rem 1.8rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            box-shadow: 0 12px 32px rgba(0, 217, 255, 0.3);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 48px rgba(0, 217, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.15), rgba(181, 55, 242, 0.1));
+            color: var(--primary);
+            border: 1.5px solid rgba(0, 217, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            border-color: rgba(0, 217, 255, 0.6);
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.25), rgba(181, 55, 242, 0.15));
+        }
+
+        .btn-small { padding: 0.6rem 1.2rem; font-size: 0.85rem; }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00FF88, #00DD88);
+            color: #000;
+            box-shadow: 0 12px 32px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 12px 32px rgba(0, 255, 136, 0.5);
+            transform: translateY(-3px);
+        }
+
+        /* STATS GRID - Bento Style */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.12), rgba(181, 55, 242, 0.08));
+            border: 1.5px solid rgba(0, 217, 255, 0.2);
+            padding: 2.2rem 1.8rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(0, 217, 255, 0.4);
+            box-shadow: 0 20px 60px rgba(0, 217, 255, 0.15);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-value {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid rgba(0, 217, 255, 0.1);
+        }
+
+        .tab {
+            padding: 1rem 1.8rem;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab:hover::after {
+            width: 100%;
+        }
+
+        .tab.active {
+            color: var(--primary);
+        }
+
+        .tab.active::after {
+            width: 100%;
+        }
+
+        .calls-container {
+            background: rgba(15, 15, 15, 0.4);
+            border: 2px solid rgba(0, 217, 255, 0.15);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .call-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(0, 217, 255, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .call-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .call-item:hover {
+            background: linear-gradient(90deg, rgba(0, 217, 255, 0.08), transparent);
+        }
+
+        .call-item:hover::before {
+            opacity: 1;
+        }
+
+        .call-number {
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .call-time {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .call-status {
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-active {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00FF88;
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.1);
+        }
+
+        .status-ended {
+            background: rgba(255, 184, 0, 0.2);
+            color: #FFB800;
+            border: 1px solid rgba(255, 184, 0, 0.4);
+            box-shadow: 0 0 15px rgba(255, 184, 0, 0.1);
+        }
+
+        .status-failed {
+            background: rgba(255, 0, 110, 0.2);
+            color: var(--secondary);
+            border: 1px solid rgba(255, 0, 110, 0.4);
+            box-shadow: 0 0 15px rgba(255, 0, 110, 0.1);
+        }
+
+        /* SCRIPTS SECTION */
+        .scripts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .script-card {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.12), rgba(181, 55, 242, 0.08));
+            border: 1.5px solid rgba(0, 217, 255, 0.2);
+            padding: 1.8rem;
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .script-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(0, 217, 255, 0.1) 0%, transparent 70%);
+            transition: all 0.3s ease;
+        }
+
+        .script-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(0, 217, 255, 0.4);
+            box-shadow: 0 15px 50px rgba(0, 217, 255, 0.15);
+        }
+
+        .script-card:hover::before {
+            top: -25%;
+            right: -25%;
+        }
+
+        .script-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .script-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .script-stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .script-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .script-actions {
+            display: flex;
+            gap: 0.8rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .script-actions .btn { flex: 1; }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: backdropFadeIn 0.3s ease;
+        }
+
+        @keyframes backdropFadeIn {
+            from { opacity: 0; backdrop-filter: blur(0px); }
+            to { opacity: 1; backdrop-filter: blur(5px); }
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: linear-gradient(135deg, rgba(15, 15, 15, 0.95), rgba(5, 5, 5, 0.95));
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            border-radius: 16px;
+            padding: 2.5rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 217, 255, 0.2);
+            backdrop-filter: blur(20px);
+            animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .modal-header h2 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--primary);
+            transform: rotate(90deg);
+        }
+
+        .form-group { margin-bottom: 1.5rem; }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--light);
+        }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 0.9rem;
+            background: rgba(0, 217, 255, 0.08);
+            border: 1.5px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            color: var(--light);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: rgba(0, 217, 255, 0.6);
+            background: rgba(0, 217, 255, 0.12);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-input::placeholder, .form-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* EXECUTION LOG */
+        .execution-log {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .log-line {
+            padding: 0.4rem 0;
+            color: rgba(255, 255, 255, 0.7);
+            animation: logLineAppear 0.4s ease;
+        }
+
+        @keyframes logLineAppear {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-success { color: #00FF88; font-weight: 600; }
+        .log-error { color: #FF6B00; }
+        .log-info { color: #FFB84D; }
+
+        /* SCROLLBAR STYLING */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, var(--secondary), var(--primary));
+        }
+
+        /* Language Selector */
+        .language-selector {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 999;
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.15), rgba(181, 55, 242, 0.1));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            padding: 0.8rem 1.2rem;
+            display: flex;
+            gap: 0.6rem;
+        }
+
+        .language-selector button {
+            background: transparent;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .language-selector button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .language-selector button.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.95), rgba(181, 55, 242, 0.85));
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 217, 255, 0.3);
+            animation: slideInToast 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            min-width: 300px;
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, rgba(57, 255, 20, 0.95), rgba(0, 255, 136, 0.85));
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, rgba(255, 0, 110, 0.95), rgba(255, 107, 0, 0.85));
+        }
+
+        .toast.warning {
+            background: linear-gradient(135deg, rgba(255, 184, 0, 0.95), rgba(255, 140, 0, 0.85));
+        }
+
+        @keyframes slideInToast {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutToast {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .toast.removing {
+            animation: slideOutToast 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: rgba(15, 15, 15, 0.4);
+            border: 2px solid rgba(0, 217, 255, 0.15);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+            position: relative;
+            max-width: 100%;
+        }
+
+        .chart-container canvas {
+            max-width: 100%;
+        }
+
+        /* Counter Animation */
+        .counter {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+        }
+
+        /* Search Box */
+        .search-box {
+            background: rgba(0, 217, 255, 0.08);
+            border: 1.5px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            padding: 0.9rem 1.2rem;
+            color: var(--light);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: rgba(0, 217, 255, 0.6);
+            background: rgba(0, 217, 255, 0.12);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        .search-box::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Filter Buttons */
+        .filter-buttons {
+            display: flex;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: rgba(0, 217, 255, 0.08);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            color: var(--text-muted);
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+        }
+
+        /* Calendar */
+        .calendar-container {
+            background: rgba(15, 15, 15, 0.4);
+            border: 2px solid rgba(0, 217, 255, 0.15);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+        }
+
+        .calendar-container input[type="date"] {
+            background: rgba(0, 217, 255, 0.08);
+            border: 1.5px solid rgba(0, 217, 255, 0.3);
+            color: var(--light);
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .calendar-container input[type="date"]:hover,
+        .calendar-container input[type="date"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        /* Sortable Table */
+        .sortable-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sortable-table th {
+            cursor: pointer;
+            user-select: none;
+            background: rgba(0, 217, 255, 0.1);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 2px solid rgba(0, 217, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .sortable-table th:hover {
+            background: rgba(0, 217, 255, 0.15);
+        }
+
+        .sortable-table th::after {
+            content: " ↕";
+            opacity: 0.3;
+            font-size: 0.8rem;
+        }
+
+        .sortable-table th.sorted-asc::after {
+            content: " ↑";
+            opacity: 1;
+            color: var(--neon-lime);
+        }
+
+        .sortable-table th.sorted-desc::after {
+            content: " ↓";
+            opacity: 1;
+            color: var(--neon-lime);
+        }
+
+        .sortable-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0, 217, 255, 0.08);
+            color: var(--text-secondary);
+        }
+
+        .sortable-table tr:hover {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        /* Export Buttons */
+        .export-section {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.15), rgba(181, 55, 242, 0.1));
+            border: 1.5px solid rgba(0, 217, 255, 0.3);
+            color: var(--primary);
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .export-btn:hover {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.25), rgba(181, 55, 242, 0.15));
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .sidebar { height: auto; position: relative; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .scripts-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 1rem; }
+            .header-actions { width: 100%; flex-direction: column; }
+            .btn { width: 100%; }
+            .language-selector { flex-direction: column; top: auto; bottom: 20px; }
+            .toast { min-width: 250px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Selector & Theme Toggle -->
+    <div class="language-selector">
+        <button class="lang-btn active" onclick="setLanguage('ru')">🇷🇺 РУ</button>
+        <button class="lang-btn" onclick="setLanguage('en')">🇬🇧 EN</button>
+        <button class="lang-btn" onclick="setLanguage('ro')">🇷🇴 RO</button>
+        <button class="lang-btn" id="themeToggle" onclick="toggleTheme()" style="margin-left: 0.5rem; border-left: 1px solid rgba(0, 217, 255, 0.2); padding-left: 1rem;">🌙</button>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="logo" data-i18n="ai_call_center">📞 AI Call Center</div>
+            <div class="nav-group">
+                <div class="nav-label" data-i18n="main">Главное</div>
+                <div class="nav-item active" onclick="switchSection('dashboard')" data-i18n="dashboard">📊 Dashboard</div>
+                <div class="nav-item" onclick="switchSection('scripts')" data-i18n="scripts">📝 Скрипты</div>
+                <div class="nav-item" onclick="switchSection('calls')" data-i18n="calls">📞 Звонки</div>
+                <div class="nav-item" onclick="switchSection('contacts')" data-i18n="contacts">👥 Контакты</div>
+            </div>
+            <div class="nav-group">
+                <div class="nav-label" data-i18n="management">Управление</div>
+                <div class="nav-item" onclick="switchSection('scheduler')" data-i18n="scheduler">⏰ Планировщик</div>
+                <div class="nav-item" onclick="switchSection('analytics')" data-i18n="analytics">📈 Аналитика</div>
+                <div class="nav-item" onclick="switchSection('export')" data-i18n="export">💾 Экспорт</div>
+            </div>
+            <div class="nav-group">
+                <div class="nav-label" data-i18n="system">Система</div>
+                <div class="nav-item" onclick="switchSection('settings')" data-i18n="settings">⚙️ Настройки</div>
+                <div class="nav-item" onclick="switchSection('docs')" data-i18n="docs">📖 Документация</div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <!-- DASHBOARD SECTION -->
+            <section id="dashboard" class="section active">
+                <div class="header">
+                    <h1 data-i18n="ai_call_center">📞 AI Call Center</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="openModal('callModal')" data-i18n="new_call">➕ Новый звонок</button>
+                        <button class="btn btn-secondary" onclick="switchSection('scripts')" data-i18n="new_script">📝 Новый скрипт</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card"><div style="font-size: 2rem;">📞</div><div class="stat-value counter" id="counter1">0</div><div class="stat-label" data-i18n="active_calls">Активные звонки</div></div>
+                    <div class="stat-card"><div style="font-size: 2rem;">📞</div><div class="stat-value counter" id="counter2">0</div><div class="stat-label" data-i18n="total_calls">Всего звонков</div></div>
+                    <div class="stat-card"><div style="font-size: 2rem;">⏱️</div><div class="stat-value">4:32</div><div class="stat-label" data-i18n="avg_time">Среднее время</div></div>
+                    <div class="stat-card"><div style="font-size: 2rem;">✓</div><div class="stat-value counter" id="counter3">0</div><div class="stat-label" data-i18n="success_rate">Успешность</div></div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab(event, 'recent')" data-i18n="recent_calls">Последние звонки</button>
+                    <button class="tab" onclick="switchTab(event, 'scheduled')" data-i18n="scheduled">Запланированные</button>
+                    <button class="tab" onclick="switchTab(event, 'failed')" data-i18n="failed">Неудачные</button>
+                </div>
+
+                <div class="calls-container">
+                    <div class="call-item"><div><div class="call-number">+373 60 123 456</div><div class="call-time">2 мин назад · 5:32 минут</div></div><div class="call-status status-active"><span data-i18n="completed">✓ Завершен</span></div></div>
+                    <div class="call-item"><div><div class="call-number">+373 60 789 012</div><div class="call-time">5 мин назад · 3:15 минут</div></div><div class="call-status status-active"><span data-i18n="completed">✓ Завершен</span></div></div>
+                    <div class="call-item"><div><div class="call-number">+373 60 345 678</div><div class="call-time">12 мин назад · Active</div></div><div class="call-status status-ended"><span data-i18n="in_process">⏱ В процессе</span></div></div>
+                    <div class="call-item"><div><div class="call-number">+373 60 555 888</div><div class="call-time">30 мин назад · 2:45 минут</div></div><div class="call-status status-failed"><span data-i18n="error">✗ Ошибка</span></div></div>
+                </div>
+            </section>
+
+            <!-- SCRIPTS SECTION -->
+            <section id="scripts" class="section">
+                <div class="header">
+                    <h1 data-i18n="scripts">📝 Управление скриптами</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="openModal('scriptModal')" data-i18n="new_script">➕ Новый скрипт</button>
+                    </div>
+                </div>
+
+                <div class="scripts-grid" id="scriptsList">
+                    <div class="script-card">
+                        <div class="script-title" data-i18n="script_sales">Скрипт продаж</div>
+                        <div class="script-desc" data-i18n="script_sales_desc">Скрипт для холодного звонка с предложением услуг</div>
+                        <div class="script-stats">
+                            <div class="script-stat" data-i18n="calls_45">📞 45 звонков</div>
+                            <div class="script-stat" data-i18n="success_38">✓ 38 успешных</div>
+                        </div>
+                        <div class="script-actions">
+                            <button class="btn btn-success btn-small" onclick="runScript('sales-script')" data-i18n="run">▶ Запустить</button>
+                            <button class="btn btn-secondary btn-small" onclick="editScript('sales-script')" data-i18n="edit">✏ Редактировать</button>
+                        </div>
+                    </div>
+
+                    <div class="script-card">
+                        <div class="script-title" data-i18n="script_support">Скрипт поддержки</div>
+                        <div class="script-desc" data-i18n="script_support_desc">Скрипт для обработки обращений поддержки клиентов</div>
+                        <div class="script-stats">
+                            <div class="script-stat" data-i18n="calls_128">📞 128 звонков</div>
+                            <div class="script-stat" data-i18n="success_126">✓ 126 успешных</div>
+                        </div>
+                        <div class="script-actions">
+                            <button class="btn btn-success btn-small" onclick="runScript('support-script')" data-i18n="run">▶ Запустить</button>
+                            <button class="btn btn-secondary btn-small" onclick="editScript('support-script')" data-i18n="edit">✏ Редактировать</button>
+                        </div>
+                    </div>
+
+                    <div class="script-card">
+                        <div class="script-title" data-i18n="script_survey">Скрипт опроса</div>
+                        <div class="script-desc" data-i18n="script_survey_desc">Скрипт для проведения опросов и сбора обратной связи</div>
+                        <div class="script-stats">
+                            <div class="script-stat" data-i18n="calls_76">📞 76 звонков</div>
+                            <div class="script-stat" data-i18n="success_72">✓ 72 успешных</div>
+                        </div>
+                        <div class="script-actions">
+                            <button class="btn btn-success btn-small" onclick="runScript('survey-script')" data-i18n="run">▶ Запустить</button>
+                            <button class="btn btn-secondary btn-small" onclick="editScript('survey-script')" data-i18n="edit">✏ Редактировать</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CALLS SECTION -->
+            <section id="calls" class="section">
+                <div class="header">
+                    <h1 data-i18n="call_history">📞 История звонков</h1>
+                </div>
+                <div class="calls-container">
+                    <div class="call-item"><div><div class="call-number">+373 60 123 456</div><div class="call-time">2 мин назад · 5:32 минут</div></div><div class="call-status status-active"><span data-i18n="completed">✓ Завершен</span></div></div>
+                    <div class="call-item"><div><div class="call-number">+373 60 789 012</div><div class="call-time">5 мин назад · 3:15 минут</div></div><div class="call-status status-active"><span data-i18n="completed">✓ Завершен</span></div></div>
+                    <div class="call-item"><div><div class="call-number">+373 60 345 678</div><div class="call-time">12 мин назад · Active</div></div><div class="call-status status-ended"><span data-i18n="in_process">⏱ В процессе</span></div></div>
+                </div>
+            </section>
+
+            <!-- CONTACTS SECTION -->
+            <section id="contacts" class="section">
+                <div class="header">
+                    <h1 data-i18n="contacts_title">👥 Контакты</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="openModal('contactModal')" data-i18n="add_contact">➕ Добавить контакт</button>
+                    </div>
+                </div>
+
+                <!-- Search & Filter -->
+                <input type="text" class="search-box" id="contactSearch" placeholder="🔍 Поиск по имени или номеру..." onkeyup="searchContacts()">
+
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterContacts('all')">Все</button>
+                    <button class="filter-btn" onclick="filterContacts('recent')">Недавние</button>
+                    <button class="filter-btn" onclick="filterContacts('favorite')">⭐ Избранные</button>
+                </div>
+
+                <!-- Contacts List -->
+                <div class="calls-container">
+                    <div class="call-item" data-contact="Иван Петров">
+                        <div>
+                            <div class="call-number">Иван Петров</div>
+                            <div class="call-time">+373 60 123 456 · ivanov@example.com</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-small btn-primary" onclick="makeCallToContact('Иван Петров')">☎️</button>
+                            <button class="btn btn-small btn-secondary" onclick="toggleFavorite(this)">☆</button>
+                        </div>
+                    </div>
+                    <div class="call-item" data-contact="Мария Сидорова">
+                        <div>
+                            <div class="call-number">Мария Сидорова</div>
+                            <div class="call-time">+373 60 789 012 · sidorova@example.com</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-small btn-primary" onclick="makeCallToContact('Мария Сидорова')">☎️</button>
+                            <button class="btn btn-small btn-secondary" onclick="toggleFavorite(this)">☆</button>
+                        </div>
+                    </div>
+                    <div class="call-item" data-contact="Алексей Волков">
+                        <div>
+                            <div class="call-number">Алексей Волков</div>
+                            <div class="call-time">+373 60 555 123 · volkov@example.com</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-small btn-primary" onclick="makeCallToContact('Алексей Волков')">☎️</button>
+                            <button class="btn btn-small btn-secondary" onclick="toggleFavorite(this)">☆</button>
+                        </div>
+                    </div>
+                    <div class="call-item" data-contact="Елена Козлова">
+                        <div>
+                            <div class="call-number">Елена Козлова</div>
+                            <div class="call-time">+373 60 777 999 · kozlova@example.com</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-small btn-primary" onclick="makeCallToContact('Елена Козлова')">☎️</button>
+                            <button class="btn btn-small btn-secondary" onclick="toggleFavorite(this)">☆</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCHEDULER SECTION -->
+            <section id="scheduler" class="section">
+                <div class="header">
+                    <h1 data-i18n="scheduler_title">⏰ Планировщик звонков</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="openModal('scheduleModal')" data-i18n="new_schedule">➕ Новое расписание</button>
+                    </div>
+                </div>
+
+                <!-- Calendar Filter -->
+                <div class="calendar-container">
+                    <h3 style="color: var(--primary); margin-bottom: 1rem;">📅 Выбрать дату</h3>
+                    <input type="date" id="scheduleDate" onchange="filterScheduleByDate()">
+                </div>
+
+                <div class="calls-container">
+                    <div style="padding: 2rem;">
+                        <h3 style="color: var(--primary); margin-bottom: 1.5rem;">Активные расписания</h3>
+                        <div style="background: rgba(0, 217, 255, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 3px solid var(--primary); margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: var(--primary); font-weight: 700; margin-bottom: 0.3rem;">📞 Утренние звонки</div>
+                                    <div style="color: var(--text-muted); font-size: 0.9rem;">Каждый день в 09:00 - 11 звонков</div>
+                                </div>
+                                <button class="btn btn-small btn-success">▶ Запустить</button>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(57, 255, 20, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 3px solid var(--neon-lime); margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: var(--neon-lime); font-weight: 700; margin-bottom: 0.3rem;">📊 Полдневные опросы</div>
+                                    <div style="color: var(--text-muted); font-size: 0.9rem;">По пн-пт в 14:00 - 8 опросов</div>
+                                </div>
+                                <button class="btn btn-small btn-success">▶ Запустить</button>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(255, 0, 110, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 3px solid var(--secondary);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: var(--secondary); font-weight: 700; margin-bottom: 0.3rem;">⏸️ Вечерние звонки (пауза)</div>
+                                    <div style="color: var(--text-muted); font-size: 0.9rem;">Каждый день в 18:00 - отключено</div>
+                                </div>
+                                <button class="btn btn-small btn-secondary">⚙️ Включить</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ANALYTICS SECTION -->
+            <section id="analytics" class="section">
+                <div class="header">
+                    <h1 data-i18n="analytics_title">📈 Аналитика и статистика</h1>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card"><div style="font-size: 2rem;">📞</div><div class="stat-value">1,234</div><div class="stat-label" data-i18n="total_calls">Всего звонков</div></div>
+                    <div class="stat-card"><div style="font-size: 2rem;">✓</div><div class="stat-value">92%</div><div class="stat-label" data-i18n="success_rate">Успешность</div></div>
+                    <div class="stat-card"><div style="font-size: 2rem;">⏱️</div><div class="stat-value">4m 32s</div><div class="stat-label" data-i18n="avg_time">Среднее время</div></div>
+                    <div class="stat-card"><div style="font-size: 2rem;">💰</div><div class="stat-value">$4.5K</div><div class="stat-label">Revenue</div></div>
+                </div>
+
+                <!-- Graph -->
+                <div class="chart-container">
+                    <h3 style="color: var(--primary); margin-bottom: 1.5rem;">📈 График звонков по дням</h3>
+                    <canvas id="callsChart" height="80"></canvas>
+                </div>
+
+                <!-- Export Buttons -->
+                <div class="export-section">
+                    <button class="export-btn" onclick="exportToCSV()">📥 Экспорт CSV</button>
+                    <button class="export-btn" onclick="exportToPDF()">📄 Экспорт PDF</button>
+                    <button class="export-btn" onclick="exportToJSON()">📋 Экспорт JSON</button>
+                </div>
+
+                <div class="calls-container" style="margin-top: 2rem;">
+                    <div style="padding: 2rem; overflow-x: auto;">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem;">📊 Статистика по дням (клик на заголовок для сортировки)</h3>
+                        <table class="sortable-table" id="analyticsTable">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortTable(0)">Дата</th>
+                                    <th onclick="sortTable(1)">Звонки</th>
+                                    <th onclick="sortTable(2)">Успешные</th>
+                                    <th onclick="sortTable(3)">Успешность</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2024-12-29</td>
+                                    <td style="color: var(--primary);">156</td>
+                                    <td style="color: var(--neon-lime);">143</td>
+                                    <td style="color: var(--neon-lime); font-weight: 700;">91.7%</td>
+                                </tr>
+                                <tr>
+                                    <td>2024-12-28</td>
+                                    <td style="color: var(--primary);">142</td>
+                                    <td style="color: var(--neon-lime);">131</td>
+                                    <td style="color: var(--neon-lime); font-weight: 700;">92.3%</td>
+                                </tr>
+                                <tr>
+                                    <td>2024-12-27</td>
+                                    <td style="color: var(--primary);">128</td>
+                                    <td style="color: var(--neon-lime);">118</td>
+                                    <td style="color: var(--neon-lime); font-weight: 700;">92.2%</td>
+                                </tr>
+                                <tr>
+                                    <td>2024-12-26</td>
+                                    <td style="color: var(--primary);">165</td>
+                                    <td style="color: var(--neon-lime);">152</td>
+                                    <td style="color: var(--neon-lime); font-weight: 700;">92.1%</td>
+                                </tr>
+                                <tr>
+                                    <td>2024-12-25</td>
+                                    <td style="color: var(--primary);">98</td>
+                                    <td style="color: var(--neon-lime);">89</td>
+                                    <td style="color: var(--neon-lime); font-weight: 700;">90.8%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- EXPORT SECTION -->
+            <section id="export" class="section">
+                <div class="header">
+                    <h1 data-i18n="export_title">💾 Экспорт данных</h1>
+                </div>
+
+                <div class="calls-container">
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.2rem;">📥 Экспортировать данные</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">Выберите формат и период для экспорта</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label class="form-label">Начальная дата</label>
+                                <input type="date" class="form-input">
+                            </div>
+                            <div>
+                                <label class="form-label">Конечная дата</label>
+                                <input type="date" class="form-input">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label class="form-label">Формат</label>
+                            <select class="form-input">
+                                <option selected>CSV (Excel)</option>
+                                <option>JSON</option>
+                                <option>PDF</option>
+                                <option>XML</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success" onclick="exportData()">⬇️ Экспортировать</button>
+                    </div>
+
+                    <div style="padding: 2rem;">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.2rem;">📤 Импортировать данные</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">Загрузите файл с контактами или настройками</p>
+                        <input type="file" class="form-input" accept=".csv,.json,.xlsx" style="cursor: pointer;">
+                        <button class="btn btn-primary" style="margin-top: 1rem; width: 100%;">⬆️ Загрузить файл</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DOCS SECTION -->
+            <section id="docs" class="section">
+                <div class="header">
+                    <h1 data-i18n="docs_title">📖 Документация</h1>
+                </div>
+
+                <div class="calls-container">
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem;">🚀 Быстрый старт</h3>
+                        <ol style="color: var(--text-muted); line-height: 1.8;">
+                            <li style="margin-bottom: 0.8rem;">Создайте новый скрипт в разделе "<strong>Скрипты</strong>"</li>
+                            <li style="margin-bottom: 0.8rem;">Напишите текст для AI агента на выбранном языке</li>
+                            <li style="margin-bottom: 0.8rem;">Нажмите кнопку "Запустить" для начала звонков</li>
+                            <li style="margin-bottom: 0.8rem;">Отслеживайте результаты в разделе "Аналитика"</li>
+                        </ol>
+                    </div>
+
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem;">🎤 Написание скриптов</h3>
+                        <div style="background: rgba(0, 217, 255, 0.08); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--text-muted); font-family: monospace; font-size: 0.9rem;">
+                                Пример скрипта:<br>
+                                "Здравствуйте! Это звонок из AI Call Center.<br>
+                                Можем ли мы вам помочь с [предложение]?<br>
+                                Спасибо за внимание!"
+                            </p>
+                        </div>
+                        <ul style="color: var(--text-muted); line-height: 1.8;">
+                            <li>✓ Используйте простой и понятный язык</li>
+                            <li>✓ Делайте паузы между предложениями</li>
+                            <li>✓ Не более 3-4 минут звонка</li>
+                            <li>✗ Не используйте сложные термины</li>
+                            <li>✗ Не давайте личные данные</li>
+                        </ul>
+                    </div>
+
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem;">📞 API справка</h3>
+                        <div style="background: rgba(0, 217, 255, 0.08); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="color: var(--neon-lime); font-weight: 700; margin-bottom: 0.5rem;">POST /api/calls/make</p>
+                            <p style="color: var(--text-muted); font-family: monospace; font-size: 0.85rem;">
+                                {<br>
+                                &nbsp;&nbsp;"phone": "+373601234567",<br>
+                                &nbsp;&nbsp;"script_id": "sales-script",<br>
+                                &nbsp;&nbsp;"language": "ru"<br>
+                                }
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="padding: 2rem;">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem;">❓ Часто задаваемые вопросы</h3>
+                        <div style="margin-bottom: 1.5rem;">
+                            <p style="color: var(--primary); font-weight: 700; margin-bottom: 0.5rem;">Как отменить звонок?</p>
+                            <p style="color: var(--text-muted);">Нажмите кнопку "Остановить" во время активного звонка или перейдите в историю звонков.</p>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <p style="color: var(--primary); font-weight: 700; margin-bottom: 0.5rem;">Как повторно использовать скрипт?</p>
+                            <p style="color: var(--text-muted);">Перейдите в раздел "Скрипты", найдите нужный скрипт и нажмите "Запустить".</p>
+                        </div>
+                        <div>
+                            <p style="color: var(--primary); font-weight: 700; margin-bottom: 0.5rem;">Где хранятся записи?</p>
+                            <p style="color: var(--text-muted);">Все записи сохраняются автоматически. Скачать их можно в разделе "Экспорт".</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SETTINGS SECTION -->
+            <section id="settings" class="section">
+                <div class="header">
+                    <h1 data-i18n="settings_title">⚙️ Настройки системы</h1>
+                </div>
+
+                <!-- General Settings -->
+                <div class="calls-container" style="margin-bottom: 2rem;">
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.2rem;">📱 Основные параметры</h3>
+                        <div class="form-group">
+                            <label class="form-label">Название компании</label>
+                            <input type="text" class="form-input" placeholder="AI Call Center" value="AI Call Center">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email поддержки</label>
+                            <input type="email" class="form-input" placeholder="support@callcenter.com" value="support@callcenter.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Телефон поддержки</label>
+                            <input type="tel" class="form-input" placeholder="+373 60 000 000" value="+373 60 000 000">
+                        </div>
+                        <button class="btn btn-primary btn-small" onclick="saveSettings()">✓ Сохранить</button>
+                    </div>
+
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.2rem;">🔑 API Ключи</h3>
+                        <div class="form-group">
+                            <label class="form-label">API Ключ VoIP</label>
+                            <div style="display: flex; gap: 0.8rem;">
+                                <input type="password" class="form-input" placeholder="sk-xxxxxxxxxxxx" id="apiKey" value="sk-6b5da23272554c54a9a">
+                                <button class="btn btn-secondary btn-small" onclick="toggleApiKey()">👁 Показать</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Webhook URL</label>
+                            <input type="url" class="form-input" placeholder="https://your-domain.com/webhook" value="https://api.callcenter.com/webhook">
+                        </div>
+                        <button class="btn btn-primary btn-small" onclick="saveSettings()">✓ Сохранить</button>
+                    </div>
+
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.2rem;">🎤 Настройки голоса</h3>
+                        <div class="form-group">
+                            <label class="form-label">Язык по умолчанию</label>
+                            <select class="form-input">
+                                <option selected>Русский</option>
+                                <option>Английский</option>
+                                <option>Румынский</option>
+                                <option>Испанский</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Скорость речи</label>
+                            <select class="form-input">
+                                <option>Медленно</option>
+                                <option selected>Нормально</option>
+                                <option>Быстро</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Громкость (%)</label>
+                            <input type="range" class="form-input" min="0" max="100" value="75" style="cursor: pointer;">
+                        </div>
+                        <button class="btn btn-primary btn-small" onclick="saveSettings()">✓ Сохранить</button>
+                    </div>
+
+                    <div style="padding: 2rem; border-bottom: 1px solid rgba(0, 217, 255, 0.1);">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.2rem;">📊 Журналирование</h3>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer;">
+                                <input type="checkbox" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span>Логировать все звонки</span>
+                            </label>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer;">
+                                <input type="checkbox" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span>Сохранять записи звонков</span>
+                            </label>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer;">
+                                <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span>Отправлять отчеты по email</span>
+                            </label>
+                        </div>
+                        <button class="btn btn-primary btn-small" onclick="saveSettings()">✓ Сохранить</button>
+                    </div>
+
+                    <div style="padding: 2rem;">
+                        <h3 style="color: var(--secondary); margin-bottom: 1rem; font-size: 1.2rem;">⚠️ Опасные операции</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">Эти действия нельзя отменить!</p>
+                        <div style="display: flex; gap: 0.8rem;">
+                            <button class="btn btn-secondary btn-small" onclick="clearLogs()">🗑️ Очистить логи</button>
+                            <button class="btn btn-secondary btn-small" onclick="resetSettings()">🔄 Сбросить настройки</button>
+                            <button class="btn btn-secondary btn-small" onclick="exportSettings()">💾 Экспортировать</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- SCRIPT MODAL -->
+    <div id="scriptModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📝 Новый скрипт</h2>
+                <button class="modal-close" onclick="closeModal('scriptModal')">×</button>
+            </div>
+            <form onsubmit="createScript(event)">
+                <div class="form-group">
+                    <label class="form-label">Название скрипта</label>
+                    <input type="text" class="form-input" placeholder="Например: Скрипт продаж" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Описание</label>
+                    <input type="text" class="form-input" placeholder="Описание скрипта" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Текст скрипта</label>
+                    <textarea class="form-textarea" placeholder="Введите текст скрипта для AI агента..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Язык</label>
+                    <select class="form-input" required>
+                        <option>Русский</option>
+                        <option>Английский</option>
+                        <option>Румынский</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">✓ Создать скрипт</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CALL MODAL -->
+    <div id="callModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📞 Новый звонок</h2>
+                <button class="modal-close" onclick="closeModal('callModal')">×</button>
+            </div>
+            <form onsubmit="makeCall(event)">
+                <div class="form-group">
+                    <label class="form-label">Номер телефона</label>
+                    <input type="tel" class="form-input" placeholder="+373 60 123 456" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Выберите скрипт</label>
+                    <select class="form-input" required>
+                        <option>Скрипт продаж</option>
+                        <option>Скрипт поддержки</option>
+                        <option>Скрипт опроса</option>
+                    </select>
+                </div>
+                <div id="executionLog" class="execution-log" style="display: none;"></div>
+                <button type="submit" class="btn btn-success" style="width: 100%; font-size: 1.1rem;">▶ НАЧАТЬ ЗВОНОК</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Translations
+        const translations = {
+            ru: {
+                'dashboard': '📊 Dashboard',
+                'scripts': '📝 Скрипты',
+                'calls': '📞 Звонки',
+                'contacts': '👥 Контакты',
+                'scheduler': '⏰ Планировщик',
+                'analytics': '📈 Аналитика',
+                'export': '💾 Экспорт',
+                'settings': '⚙️ Настройки',
+                'docs': '📖 Документация',
+                'main': 'Главное',
+                'management': 'Управление',
+                'system': 'Система',
+                'ai_call_center': '📞 AI Call Center',
+                'new_call': '➕ Новый звонок',
+                'new_script': '📝 Новый скрипт',
+                'script_sales': 'Скрипт продаж',
+                'script_sales_desc': 'Скрипт для холодного звонка с предложением услуг',
+                'script_support': 'Скрипт поддержки',
+                'script_support_desc': 'Скрипт для обработки обращений поддержки клиентов',
+                'script_survey': 'Скрипт опроса',
+                'script_survey_desc': 'Скрипт для проведения опросов и сбора обратной связи',
+                'calls_45': '📞 45 звонков',
+                'success_38': '✓ 38 успешных',
+                'calls_128': '📞 128 звонков',
+                'success_126': '✓ 126 успешных',
+                'calls_76': '📞 76 звонков',
+                'success_72': '✓ 72 успешных',
+                'run': '▶ Запустить',
+                'edit': '✏ Редактировать',
+                'active_calls': 'Активные звонки',
+                'total_calls': 'Всего звонков',
+                'avg_time': 'Среднее время',
+                'success_rate': 'Успешность',
+                'recent_calls': 'Последние звонки',
+                'scheduled': 'Запланированные',
+                'failed': 'Неудачные',
+                'completed': 'Завершен',
+                'in_process': 'В процессе',
+                'error': 'Ошибка',
+                'call_history': '📞 История звонков',
+                'contacts_title': '👥 Контакты',
+                'add_contact': '➕ Добавить контакт',
+                'call_btn': 'Позвонить',
+                'scheduler_title': '⏰ Планировщик звонков',
+                'new_schedule': '➕ Новое расписание',
+                'analytics_title': '📈 Аналитика и статистика',
+                'export_title': '💾 Экспорт данных',
+                'docs_title': '📖 Документация',
+                'settings_title': '⚙️ Настройки системы'
+            },
+            en: {
+                'dashboard': '📊 Dashboard',
+                'scripts': '📝 Scripts',
+                'calls': '📞 Calls',
+                'contacts': '👥 Contacts',
+                'scheduler': '⏰ Scheduler',
+                'analytics': '📈 Analytics',
+                'export': '💾 Export',
+                'settings': '⚙️ Settings',
+                'docs': '📖 Documentation',
+                'main': 'Main',
+                'management': 'Management',
+                'system': 'System',
+                'ai_call_center': '📞 AI Call Center',
+                'new_call': '➕ New Call',
+                'new_script': '📝 New Script',
+                'script_sales': 'Sales Script',
+                'script_sales_desc': 'Script for cold calling with service offers',
+                'script_support': 'Support Script',
+                'script_support_desc': 'Script for handling customer support inquiries',
+                'script_survey': 'Survey Script',
+                'script_survey_desc': 'Script for conducting surveys and gathering feedback',
+                'calls_45': '📞 45 calls',
+                'success_38': '✓ 38 successful',
+                'calls_128': '📞 128 calls',
+                'success_126': '✓ 126 successful',
+                'calls_76': '📞 76 calls',
+                'success_72': '✓ 72 successful',
+                'run': '▶ Run',
+                'edit': '✏ Edit',
+                'active_calls': 'Active Calls',
+                'total_calls': 'Total Calls',
+                'avg_time': 'Average Time',
+                'success_rate': 'Success Rate',
+                'recent_calls': 'Recent Calls',
+                'scheduled': 'Scheduled',
+                'failed': 'Failed',
+                'completed': 'Completed',
+                'in_process': 'In Process',
+                'error': 'Error',
+                'call_history': '📞 Call History',
+                'contacts_title': '👥 Contacts',
+                'add_contact': '➕ Add Contact',
+                'call_btn': 'Call',
+                'scheduler_title': '⏰ Call Scheduler',
+                'new_schedule': '➕ New Schedule',
+                'analytics_title': '📈 Analytics and Statistics',
+                'export_title': '💾 Export Data',
+                'docs_title': '📖 Documentation',
+                'settings_title': '⚙️ System Settings'
+            },
+            ro: {
+                'dashboard': '📊 Dashboard',
+                'scripts': '📝 Scripturi',
+                'calls': '📞 Apeluri',
+                'contacts': '👥 Contacte',
+                'scheduler': '⏰ Planificator',
+                'analytics': '📈 Analitica',
+                'export': '💾 Export',
+                'settings': '⚙️ Setari',
+                'docs': '📖 Documentatie',
+                'main': 'Principal',
+                'management': 'Managementul',
+                'system': 'Sistem',
+                'ai_call_center': '📞 AI Call Center',
+                'new_call': '➕ Apel nou',
+                'new_script': '📝 Script nou',
+                'script_sales': 'Script de vânzări',
+                'script_sales_desc': 'Script pentru apeluri reci cu oferte de servicii',
+                'script_support': 'Script de suport',
+                'script_support_desc': 'Script pentru gestionarea solicitărilor de suport',
+                'script_survey': 'Script de sondaj',
+                'script_survey_desc': 'Script pentru efectuarea sondajelor și colectarea feedback-ului',
+                'calls_45': '📞 45 apeluri',
+                'success_38': '✓ 38 reușite',
+                'calls_128': '📞 128 apeluri',
+                'success_126': '✓ 126 reușite',
+                'calls_76': '📞 76 apeluri',
+                'success_72': '✓ 72 reușite',
+                'run': '▶ Rulează',
+                'edit': '✏ Editează',
+                'active_calls': 'Apeluri active',
+                'total_calls': 'Total apeluri',
+                'avg_time': 'Timp mediu',
+                'success_rate': 'Rata de succes',
+                'recent_calls': 'Apeluri recente',
+                'scheduled': 'Programate',
+                'failed': 'Eșuate',
+                'completed': 'Complet',
+                'in_process': 'În curs',
+                'error': 'Eroare',
+                'call_history': '📞 Istoricul apelurilor',
+                'contacts_title': '👥 Contacte',
+                'add_contact': '➕ Adăugați contact',
+                'call_btn': 'Apel',
+                'scheduler_title': '⏰ Planificator apeluri',
+                'new_schedule': '➕ Program nou',
+                'analytics_title': '📈 Analitica și statistici',
+                'export_title': '💾 Export date',
+                'docs_title': '📖 Documentație',
+                'settings_title': '⚙️ Setari sistem'
+            }
+        };
+
+        let currentLanguage = localStorage.getItem('language') || 'ru';
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang);
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updatePageLanguage();
+        }
+
+        function t(key) {
+            return translations[currentLanguage][key] || translations['ru'][key] || key;
+        }
+
+        function updatePageLanguage() {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                element.textContent = t(key);
+            });
+        }
+
+        const scripts = {
+            'sales-script': { name: 'Скрипт продаж', desc: 'Скрипт для холодного звонка' },
+            'support-script': { name: 'Скрипт поддержки', desc: 'Скрипт для обработки обращений' },
+            'survey-script': { name: 'Скрипт опроса', desc: 'Скрипт для проведения опросов' }
+        };
+
+        function switchSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function switchTab(e, tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            e.target.classList.add('active');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function createScript(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target.parentElement);
+            const scriptData = {
+                name: formData.get('scriptName') || 'Новый скрипт',
+                timestamp: new Date().toISOString()
+            };
+            saveToLocalStorage('scripts_' + Date.now(), scriptData);
+            closeModal('scriptModal');
+        }
+
+        function runScript(scriptId) {
+            showToast('▶ ' + scripts[scriptId].name + ' запущен!', 'success');
+            showToast('🔍 Начиная поиск контактов...', 'info');
+            setTimeout(() => showToast('📞 Инициирование звонков...', 'info'), 1000);
+        }
+
+        function editScript(scriptId) {
+            openModal('scriptModal');
+        }
+
+        function makeCall(e) {
+            e.preventDefault();
+            const log = document.getElementById('executionLog');
+            log.style.display = 'block';
+            log.innerHTML = '';
+
+            const messages = [
+                '<div class="log-line log-info">⏳ Подключение к API VoIP...</div>',
+                '<div class="log-line log-success">✓ Соединение установлено</div>',
+                '<div class="log-line log-info">📞 Набираю номер...</div>',
+                '<div class="log-line log-success">✓ Звонок соединен</div>',
+                '<div class="log-line log-info">🎤 Загружаю скрипт...</div>',
+                '<div class="log-line log-success">✓ Скрипт загружен</div>',
+                '<div class="log-line log-info">🤖 AI агент начинает разговор...</div>',
+                '<div class="log-line log-success">✓ Агент: Здравствуйте! Это звонок из AI Call Center. Как ваши дела?</div>'
+            ];
+
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i < messages.length) {
+                    log.innerHTML += messages[i];
+                    i++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 800);
+        }
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                }
+            });
+        });
+
+        // Settings Functions
+        function saveSettings() {
+            const settings = {
+                company: 'AI Call Center',
+                language: currentLanguage,
+                theme: isDarkMode ? 'dark' : 'light',
+                timestamp: new Date().toISOString()
+            };
+            saveToLocalStorage('callcenter_settings', settings);
+        }
+
+        function toggleApiKey() {
+            const input = document.getElementById('apiKey');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function clearLogs() {
+            if (confirm('⚠️ Вы уверены? Это действие нельзя отменить!\n\nОчистить ВСЕ логи?')) {
+                alert('✓ Логи успешно очищены!');
+            }
+        }
+
+        function resetSettings() {
+            if (confirm('⚠️ Все настройки будут сброшены на значения по умолчанию!\n\nПродолжить?')) {
+                alert('✓ Настройки сброшены на значения по умолчанию!');
+                location.reload();
+            }
+        }
+
+        function exportSettings() {
+            const settings = {
+                company: 'AI Call Center',
+                email: 'support@callcenter.com',
+                phone: '+373 60 000 000',
+                language: 'Русский',
+                timestamp: new Date().toISOString()
+            };
+            const dataStr = JSON.stringify(settings, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = 'callcenter-settings.json';
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            alert('✓ Настройки экспортированы!');
+        }
+
+        function exportData() {
+            const csvData = 'Date,Calls,Successful,Rate\n2024-12-29,156,143,91.7%\n2024-12-28,142,131,92.3%\n2024-12-27,128,118,92.2%';
+            const dataUri = 'data:text/csv;charset=utf-8,'+ encodeURIComponent(csvData);
+            const exportFileDefaultName = 'callcenter-export.csv';
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            saveSettings();
+        }
+
+        // Add slide-in animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Theme Toggle
+        let isDarkMode = localStorage.getItem('theme') !== 'light';
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+
+            if (isDarkMode) {
+                document.body.style.background = 'linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%)';
+                document.getElementById('themeToggle').textContent = '☀️';
+                showToast('🌙 Темный режим включен', 'success');
+            } else {
+                document.body.style.background = 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)';
+                document.getElementById('themeToggle').textContent = '🌙';
+                showToast('☀️ Светлый режим включен', 'success');
+            }
+        }
+
+        // Toast Notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        // LocalStorage Functions
+        function saveToLocalStorage(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+            showToast('✓ ' + key + ' сохранено', 'success');
+        }
+
+        function getFromLocalStorage(key) {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : null;
+        }
+
+        // Chart.js
+        let callsChart = null;
+
+        function initChart() {
+            const ctx = document.getElementById('callsChart');
+            if (!ctx) return;
+
+            // Destroy existing chart if any
+            if (callsChart) callsChart.destroy();
+
+            callsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                    datasets: [
+                        {
+                            label: 'Всего звонков',
+                            data: [45, 52, 48, 65, 58, 42, 38],
+                            borderColor: '#00D9FF',
+                            backgroundColor: 'rgba(0, 217, 255, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#00D9FF',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'Успешные звонки',
+                            data: [41, 48, 44, 60, 53, 38, 34],
+                            borderColor: '#39ff14',
+                            backgroundColor: 'rgba(57, 255, 20, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#39ff14',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'Пропущенные',
+                            data: [4, 4, 4, 5, 5, 4, 4],
+                            borderColor: '#FF006E',
+                            backgroundColor: 'rgba(255, 0, 110, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#FF006E',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                font: { size: 12, weight: 'bold' },
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                color: 'rgba(0, 217, 255, 0.1)',
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize language
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.lang-btn').forEach((btn, index) => {
+                if (index === 0 && currentLanguage === 'ru') {
+                    btn.classList.add('active');
+                } else if (index === 1 && currentLanguage === 'en') {
+                    btn.classList.add('active');
+                } else if (index === 2 && currentLanguage === 'ro') {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Initialize chart
+            setTimeout(() => initChart(), 500);
+
+            // Apply theme
+            if (!isDarkMode) {
+                document.body.style.background = 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)';
+                document.getElementById('themeToggle').textContent = '☀️';
+            }
+
+            showToast('✨ Dashboard загружен!', 'success');
+        });
+
+        // Set correct language button on load
+        window.addEventListener('load', function() {
+            if (currentLanguage === 'ru') document.querySelectorAll('.lang-btn')[0].classList.add('active');
+            if (currentLanguage === 'en') document.querySelectorAll('.lang-btn')[1].classList.add('active');
+            if (currentLanguage === 'ro') document.querySelectorAll('.lang-btn')[2].classList.add('active');
+        });
+
+        // ==================== НОВЫЕ ФУНКЦИИ ====================
+
+        // 1️⃣ СЧЁТЧИКИ С АНИМАЦИЕЙ
+        function animateCounter(id, endValue) {
+            const element = document.getElementById(id);
+            if (!element) return;
+
+            let currentValue = 0;
+            const increment = endValue / 60;
+            const interval = setInterval(() => {
+                currentValue += increment;
+                if (currentValue >= endValue) {
+                    element.textContent = endValue;
+                    clearInterval(interval);
+                } else {
+                    element.textContent = Math.floor(currentValue);
+                }
+            }, 30);
+        }
+
+        // Запуск счётчиков при загрузке
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                animateCounter('counter1', 24);
+                animateCounter('counter2', 1234);
+                animateCounter('counter3', 92);
+            }, 500);
+        });
+
+        // 2️⃣ ПОИСК КОНТАКТОВ
+        function searchContacts() {
+            const searchValue = document.getElementById('contactSearch').value.toLowerCase();
+            const contacts = document.querySelectorAll('[data-contact]');
+
+            contacts.forEach(contact => {
+                const text = contact.getAttribute('data-contact').toLowerCase();
+                if (text.includes(searchValue)) {
+                    contact.style.display = 'flex';
+                } else {
+                    contact.style.display = 'none';
+                }
+            });
+        }
+
+        // 3️⃣ ФИЛЬТРЫ КОНТАКТОВ
+        function filterContacts(filter) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (filter === 'all') {
+                document.querySelectorAll('[data-contact]').forEach(c => c.style.display = 'flex');
+            }
+            showToast('✓ Фильтр применён', 'success');
+        }
+
+        // 4️⃣ ИЗБРАННЫЕ КОНТАКТЫ
+        function toggleFavorite(btn) {
+            btn.textContent = btn.textContent === '☆' ? '⭐' : '☆';
+            showToast('✓ Избранное обновлено', 'success');
+        }
+
+        // 5️⃣ ЗВОНОК КОНТАКТУ
+        function makeCallToContact(name) {
+            showToast('📞 Звонок ' + name, 'info');
+            setTimeout(() => showToast('✓ Соединение установлено', 'success'), 1000);
+        }
+
+        // 6️⃣ КАЛЕНДАРЬ ПЛАНИРОВЩИКА
+        function filterScheduleByDate() {
+            const date = document.getElementById('scheduleDate').value;
+            if (date) {
+                showToast('📅 Фильтр: ' + date, 'info');
+            }
+        }
+
+        // 7️⃣ СОРТИРОВКА ТАБЛИЦЫ
+        let sortDirection = {};
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('analyticsTable');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            const headers = table.querySelectorAll('th');
+
+            // Toggle direction
+            sortDirection[columnIndex] = !sortDirection[columnIndex];
+
+            rows.sort((a, b) => {
+                const aValue = a.children[columnIndex].textContent.trim();
+                const bValue = b.children[columnIndex].textContent.trim();
+
+                const aNum = parseFloat(aValue) || aValue;
+                const bNum = parseFloat(bValue) || bValue;
+
+                if (typeof aNum === 'number' && typeof bNum === 'number') {
+                    return sortDirection[columnIndex] ? aNum - bNum : bNum - aNum;
+                } else {
+                    return sortDirection[columnIndex]
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                }
+            });
+
+            rows.forEach(row => table.querySelector('tbody').appendChild(row));
+
+            // Update header indicators
+            headers.forEach((h, i) => {
+                h.classList.remove('sorted-asc', 'sorted-desc');
+                if (i === columnIndex) {
+                    h.classList.add(sortDirection[columnIndex] ? 'sorted-asc' : 'sorted-desc');
+                }
+            });
+
+            showToast('✓ Таблица отсортирована', 'info');
+        }
+
+        // 8️⃣ ЭКСПОРТ В CSV
+        function exportToCSV() {
+            const table = document.getElementById('analyticsTable');
+            const rows = table.querySelectorAll('tr');
+            let csv = '';
+
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td, th');
+                csv += Array.from(cols).map(c => c.textContent).join(',') + '\n';
+            });
+
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            link.download = 'analytics-' + new Date().toISOString().split('T')[0] + '.csv';
+            link.click();
+
+            showToast('📥 CSV экспортирован', 'success');
+        }
+
+        // 9️⃣ ЭКСПОРТ В JSON
+        function exportToJSON() {
+            const table = document.getElementById('analyticsTable');
+            const rows = table.querySelectorAll('tbody tr');
+            const headers = Array.from(table.querySelectorAll('thead th')).map(h => h.textContent);
+
+            const data = Array.from(rows).map(row => {
+                const cols = row.querySelectorAll('td');
+                const obj = {};
+                headers.forEach((h, i) => {
+                    obj[h] = cols[i].textContent;
+                });
+                return obj;
+            });
+
+            const link = document.createElement('a');
+            link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
+            link.download = 'analytics-' + new Date().toISOString().split('T')[0] + '.json';
+            link.click();
+
+            showToast('📋 JSON экспортирован', 'success');
+        }
+
+        // 🔟 ЭКСПОРТ В PDF
+        function exportToPDF() {
+            const element = document.getElementById('analyticsTable');
+            const opt = {
+                margin: 10,
+                filename: 'analytics-' + new Date().toISOString().split('T')[0] + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+            showToast('📄 PDF экспортирован', 'success');
+        }
+    </script>
+</body>
+</html>
