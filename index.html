@@ -710,7 +710,7 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            z-index: 999;
+            z-index: 9999;
             background: linear-gradient(135deg, rgba(0, 217, 255, 0.15), rgba(181, 55, 242, 0.1));
             backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 217, 255, 0.3);
@@ -718,6 +718,8 @@
             padding: 0.8rem 1.2rem;
             display: flex;
             gap: 0.6rem;
+            pointer-events: auto;
+            will-change: auto;
         }
 
         .language-selector button {
