@@ -1828,32 +1828,114 @@
             openModal('scriptModal');
         }
 
-        function makeCall(e) {
+        async function makeCall(e) {
             e.preventDefault();
             const log = document.getElementById('executionLog');
+            const form = e.target;
+            const phoneNumber = form.querySelector('input[type="tel"]').value;
+            const scriptSelect = form.querySelector('select');
+            const scriptId = {
+                'Скрипт продаж': 'sales-script',
+                'Скрипт поддержки': 'support-script',
+                'Скрипт опроса': 'survey-script'
+            }[scriptSelect.value] || 'sales-script';
+
             log.style.display = 'block';
             log.innerHTML = '';
 
-            const messages = [
-                '<div class="log-line log-info">⏳ Подключение к API VoIP...</div>',
-                '<div class="log-line log-success">✓ Соединение установлено</div>',
-                '<div class="log-line log-info">📞 Набираю номер...</div>',
-                '<div class="log-line log-success">✓ Звонок соединен</div>',
-                '<div class="log-line log-info">🎤 Загружаю скрипт...</div>',
-                '<div class="log-line log-success">✓ Скрипт загружен</div>',
-                '<div class="log-line log-info">🤖 AI агент начинает разговор...</div>',
-                '<div class="log-line log-success">✓ Агент: Здравствуйте! Это звонок из AI Call Center. Как ваши дела?</div>'
-            ];
+            // Функция для добавления логов
+            function addLog(message, type = 'info') {
+                const logClass = `log-${type}`;
+                log.innerHTML += `<div class="log-line ${logClass}">${message}</div>`;
+                log.scrollTop = log.scrollHeight;
+            }
 
-            let i = 0;
-            const interval = setInterval(() => {
-                if (i < messages.length) {
-                    log.innerHTML += messages[i];
-                    i++;
-                } else {
-                    clearInterval(interval);
+            try {
+                addLog('⏳ Подключение к API VoIP...', 'info');
+
+                // Определяем API URL (для локальной разработки или production)
+                const apiUrl = process.env.NODE_ENV === 'development'
+                    ? 'http://localhost:3000/api/calls'
+                    : '/api/calls';
+
+                // Отправляем запрос на инициирование звонка
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phoneNumber: phoneNumber,
+                        scriptId: scriptId,
+                        callerId: 'ai-call-center'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    addLog(`✗ Ошибка: ${data.error || 'Неизвестная ошибка'}`, 'error');
+                    return;
                 }
-            }, 800);
+
+                addLog('✓ Соединение установлено', 'success');
+                addLog(`📞 Набираю номер: ${phoneNumber}...`, 'info');
+
+                // Небольшая задержка для реалистичности
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                addLog('✓ Звонок соединен', 'success');
+                addLog('🎤 Загружаю скрипт...', 'info');
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                addLog('✓ Скрипт загружен', 'success');
+                addLog('🤖 AI агент начинает разговор...', 'info');
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                if (data.success) {
+                    addLog(`✓ Звонок инициирован (ID: ${data.callId})`, 'success');
+                    addLog(`📊 Скрипт: ${data.scriptName}`, 'success');
+
+                    // Сохранение в историю звонков
+                    const callRecord = {
+                        id: data.callId,
+                        phoneNumber: phoneNumber,
+                        scriptName: data.scriptName,
+                        status: data.status || 'initiating',
+                        startTime: new Date().toLocaleString('ru-RU'),
+                        duration: '0:00'
+                    };
+
+                    saveCallToHistory(callRecord);
+
+                    // Показываем уведомление
+                    showToast(`Звонок на ${phoneNumber} инициирован!`, 'success');
+                } else {
+                    addLog(`✗ Ошибка: ${data.error}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Ошибка при инициировании звонка:', error);
+                addLog(`✗ Ошибка подключения: ${error.message}`, 'error');
+                showToast('Ошибка при инициировании звонка. Проверьте консоль.', 'error');
+            }
+
+            closeModal('callModal');
+        }
+
+        // Сохранение звонка в историю (localStorage)
+        function saveCallToHistory(callRecord) {
+            let history = JSON.parse(localStorage.getItem('callHistory') || '[]');
+            history.unshift(callRecord);
+
+            // Ограничиваем размер истории
+            if (history.length > 100) {
+                history = history.slice(0, 100);
+            }
+
+            localStorage.setItem('callHistory', JSON.stringify(history));
         }
 
         document.querySelectorAll('.modal').forEach(modal => {

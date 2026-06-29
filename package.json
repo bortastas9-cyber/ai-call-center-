@@ -1,0 +1,25 @@
+{
+  "name": "ai-call-center",
+  "version": "1.0.0",
+  "description": "AI Call Center Dashboard with real Twilio VoIP integration",
+  "main": "api/calls.js",
+  "scripts": {
+    "dev": "node api/calls.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "call-center",
+    "voip",
+    "twilio",
+    "text-to-speech",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "twilio": "^4.10.0",
+    "@google-cloud/text-to-speech": "^5.2.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {}
+}
